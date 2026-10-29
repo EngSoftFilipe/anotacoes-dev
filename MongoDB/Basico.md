@@ -228,3 +228,80 @@ db.estados.aggregate([
 { nome: "Sergipe", sigla: "SE", cidades: "Itabaiana" }
 ```
 > 1 documento com 3 cidades no array virou 3 documentos, um para cada cidade. Documentos sem o array somem do resultado.
+
+## Update
+- Funciona com a mesma lógica do SQL, porém usando a sintaxe do Mongo (JS se for Mongosh)
+
+```js
+db.colecao.updateOne({ quem }, { o que muda })
+```
+
+### Métodos
+- `updateOne`	altera o primeiro documento que bater com o filtro
+- `updateMany` altera todos os que baterem com o filtro
+- `replaceOne` substitui o documento inteiro por outro (os campos não citados somem)
+
+```js
+// Um documento: Sergipe ganha a cidade Aracaju
+db.estados.updateOne(
+  { sigla: "SE" },
+  { $push: { cidades: "Aracaju" } }
+)
+
+// Vários documentos: todo o Nordeste ganha um campo novo
+db.estados.updateMany(
+  { regiao: "Nordeste" },
+  { $set: { pais: "Brasil" } }
+)
+
+// Item dentro do array: o $ aponta pra cidade que o filtro achou
+db.estados.updateOne(
+  { sigla: "SP", "cidades.nome": "Guarulhos" },
+  { $set: { "cidades.$.populacao": 1291771 }}
+)
+```
+
+### Operadores
+- `$set` Cria ou altera um campo	
+```js
+{ $set: { regiao: "Nordeste" }}
+```
+- `$unset` Remove um campo	
+```js
+{ $unset: { apelido: "" }}
+```
+- `$inc` Soma (ou subtrai, com número negativo) 
+```js
+{ $inc: { populacao: 1000 }}
+```
+- `$mul` Multiplica 
+```js
+{ $mul: { populacao: 2 }}
+```
+- `$rename`	Renomeia um campo	
+```js
+{ $rename: { regiao: "macroRegiao" }}
+```
+- `$push`	Adiciona um item no array	
+```js
+{ $push: { cidades: "Lagarto" }}
+```
+- `$addToSet`	Adiciona no array só se ainda não existir	
+```js
+{ $addToSet: { cidades: "Lagarto" }}
+```
+- `$pull`	Remove um item do array	
+```js
+{ $pull: { cidades: "Lagarto" }}
+```
+
+### Upsert
+- Atualiza ou cria (cria se não existir)
+- Parecido com o método `PUT` do `http` 
+```js
+db.estados.updateOne(
+  { sigla: "TO" },
+  { $set: { nome: "Tocantins", regiao: "Norte" } },
+  { upsert: true }
+)
+```
