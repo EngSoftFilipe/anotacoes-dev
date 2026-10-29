@@ -122,3 +122,109 @@ db.estados.updateOne(
     { $set: { "cidades.$.populacao": 1291771 } }
 )
 ```
+
+## Aggregate
+- É um método que possui mais de 40 estágios
+- Todos os stages só podem ser usados no pipeline
+
+### Project
+- É um stage do aggregate
+- Faz o mesmo papel do find(), porém `consegue editar dados (mostrar/esconder campos/criar campos novos na saída) sem alterar no banco`
+- Só existe dentro do pipeline do aggregate (Precisa chamar o aggregate para poder usar o project. EX: Só pode chamar um filter, map, reduce em Java se usar um Stream() )
+- Muito útil para `mostrar centavos em reais` evitando problemas com ponto flutuante. (Lembrando que quem evita o problema de ponto flutuante é guardar em centavos, e não o $project em si)
+
+```js
+// Dados no banco
+{nome: "Filipe", saldoCentavos: 15000}
+
+db.contas.aggregate([
+  {$project: {
+    _id: 0,
+    nome: 1,
+    saldoReais: {$divide: ["$saldoCentavos", 100]}
+  }}
+])
+
+// O output
+{nome: 'Filipe', saldoReais: 150}
+```
+### Match
+- É um stage do aggregate
+- É um `filtro`, funciona igual o .filter() do Java, JS e etc
+- Funciona como uma `peneira` e só passa o que deve
+
+```js
+// Documentos na coleção 'estados'
+{ nome: "Sergipe", sigla: "SE", regiao: "Nordeste" }
+{ nome: "Bahia", sigla: "BA", regiao: "Nordeste" }
+{ nome: "Minas Gerais", sigla: "MG", regiao: "Sudeste" }
+{ nome: "Paraná", sigla: "PR", regiao: "Sul" }
+{ nome: "Amazonas", sigla: "AM", regiao: "Norte" }
+
+db.estados.aggregate([
+  {$match: {regiao: "Nordeste"}}
+])
+
+// O output
+{ nome: "Sergipe", sigla: "SE", regiao: "Nordeste" }
+{ nome: "Bahia", sigla: "BA", regiao: "Nordeste" } 
+```
+### Sort
+- Ordena os documentos: `1` = crescente (A→Z, 0→9) e `-1` = decrescente (Z --> A, 9 --> 0). No Java Stream, é o `sorted`
+
+```js
+// Documentos
+{ nome: "Bahia", populacao: 14141626 }
+{ nome: "Sergipe", populacao: 2210004 }
+{ nome: "Pernambuco", populacao: 9058931 }
+
+// Consulta (do mais populoso pro menos)
+db.estados.aggregate([
+  { $sort: { populacao: -1 } }
+])
+
+// Resultado
+{ nome: "Bahia", populacao: 14141626 }
+{ nome: "Pernambuco", populacao: 9058931 }
+{ nome: "Sergipe", populacao: 2210004 }
+```
+
+### Group
+- É um stage do aggregate
+- Separa os documentos em grupos pelo `_id` e calcula algo em cada grupo.
+- `$sum: 1` conta quantos documentos tem em cada grupo. No Java Stream, é o `groupingBy`; no SQL, o `GROUP BY`
+
+```js
+// Documentos
+{ nome: "Sergipe", regiao: "Nordeste" }
+{ nome: "Bahia", regiao: "Nordeste" }
+{ nome: "Paraná", regiao: "Sul" }
+
+// Consulta (quantos estados por região)
+db.estados.aggregate([
+  { $group: { _id: "$regiao", quantidade: { $sum: 1 }}}
+])
+
+// Resultado
+{ _id: "Nordeste", quantidade: 2 }
+{ _id: "Sul", quantidade: 1 }
+```
+
+### Unwind
+- Transforma array em documentos. Um pra cada item
+
+```js
+// Documento
+{ nome: "Sergipe", sigla: "SE", cidades: ["Aracaju", "Lagarto", "Itabaiana"] }
+
+// Consulta 
+db.estados.aggregate([
+  { $unwind: "$cidades" }
+])
+
+// Resultado
+{ nome: "Sergipe", sigla: "SE", cidades: "Aracaju" }
+{ nome: "Sergipe", sigla: "SE", cidades: "Lagarto" }
+{ nome: "Sergipe", sigla: "SE", cidades: "Itabaiana" }
+```
+> 1 documento com 3 cidades no array virou 3 documentos, um para cada cidade. Documentos sem o array somem do resultado.
