@@ -305,3 +305,34 @@ db.estados.updateOne(
   { upsert: true }
 )
 ```
+### Lookup
+
+- É um stage do aggregate
+- Busca documentos de **outra coleção** e junta no resultado. É o `JOIN` do Mongo
+- O resultado sempre vem dentro de um **array**, mesmo quando encontra um só
+
+```js
+// Coleção 'estados'
+{ _id: 1, nome: "Sergipe", sigla: "SE" }
+{ _id: 2, nome: "Bahia", sigla: "BA" }
+
+// Coleção 'empresas' (guarda só o _id do estado)
+{ nome: "Padaria do Zé", estadoId: 1 }
+{ nome: "Mercado Bom Preço", estadoId: 2 }
+
+// Consulta
+db.empresas.aggregate([
+  { $lookup: {
+      from: "estados",         // coleção onde vai buscar
+      localField: "estadoId",  // campo da coleção atual (empresas)
+      foreignField: "_id",     // campo da outra coleção que tem ser igual
+      as: "estado"             // nome do campo onde o resultado vai entrar
+  }}
+])
+
+// Resultado
+{ nome: "Padaria do Zé", estadoId: 1, estado: [{ _id: 1, nome: "Sergipe", sigla: "SE" }]}
+{ nome: "Mercado Bom Preço", estadoId: 2, estado: [{ _id: 2, nome: "Bahia", sigla: "BA" }]}
+```
+
+> Para tirar o resultado de dentro do array, é só usar um `$unwind: "$estado"` logo depois do `$lookup`.
